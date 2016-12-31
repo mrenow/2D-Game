@@ -1,6 +1,8 @@
 ﻿using Game.Core;
-using Game.Particles;
+using Game.Entities.Particles;
 using Game.Terrains;
+using Game.Terrains.Lighting;
+using Game.Terrains.Terrain_Generation;
 using Game.Util;
 using OpenGL;
 using System;
@@ -12,7 +14,7 @@ namespace Game.Entities {
     static class EntityManager {
 
         #region Fields
-        internal const float maxHorzSpeed = 0.8f;
+        internal const float maxHorzSpeed = 1f;
         internal const float maxVertSpeed = 1f;
 
         private const int GridX = 4;
@@ -38,7 +40,7 @@ namespace Game.Entities {
 
         public static void Init() {
             Particle.Init();
-            EntityGrid = new HashSet<Entity>[(int)Math.Ceiling((float)Terrain.Tiles.GetLength(0) / GridX), (int)Math.Ceiling((float)Terrain.Tiles.GetLength(1) / GridY)];
+            EntityGrid = new HashSet<Entity>[(int)Math.Ceiling((float)TerrainGen.SizeX / GridX), (int)Math.Ceiling((float)TerrainGen.SizeY / GridY)];
             for (int i = 0; i < EntityGrid.GetLength(0); i++) {
                 for (int j = 0; j < EntityGrid.GetLength(1); j++) {
                     EntityGrid[i, j] = new HashSet<Entity>();
@@ -98,10 +100,8 @@ namespace Game.Entities {
         internal static Vector2i GetGridArray(Vector2 pos) {
             int gx = (int)Math.Floor(pos.x / GridX);
             int gy = (int)Math.Floor(pos.y / GridY);
-            if (gx < 0) gx = 0;
-            if (gx >= EntityGrid.GetLength(0)) gx = EntityGrid.GetLength(0) - 1;
-            if (gy < 0) gy = 0;
-            if (gy >= EntityGrid.GetLength(1)) gy = EntityGrid.GetLength(1) - 1;
+            gx = MathUtil.Clamp(gx, 0, EntityGrid.GetLength(0) - 1);
+            gy = MathUtil.Clamp(gy, 0, EntityGrid.GetLength(1) - 1);
             return new Vector2i(gx, gy);
         }
 
@@ -146,6 +146,7 @@ namespace Game.Entities {
 
         public static void UpdateAll() {
             if (Player.Instance == null) return;
+            GameTime.EntityUpdatesTimer.Start();
             int minx, maxx, miny, maxy;
             Terrain.Range(out minx, out maxx, out miny, out maxy);
 
@@ -153,17 +154,17 @@ namespace Game.Entities {
             int mingy = (int)Math.Floor((float)miny / GridY);
             int maxgx = (int)Math.Ceiling((float)maxx / GridX);
             int maxgy = (int)Math.Ceiling((float)maxy / GridY);
-            MathUtil.Clamp(ref mingx, 0, EntityGrid.GetLength(0) - 1);
-            MathUtil.Clamp(ref mingy, 0, EntityGrid.GetLength(1) - 1);
-            MathUtil.Clamp(ref maxgx, 0, EntityGrid.GetLength(0) - 1);
-            MathUtil.Clamp(ref maxgy, 0, EntityGrid.GetLength(1) - 1);
+            mingx = MathUtil.Clamp(mingx, 0, EntityGrid.GetLength(0) - 1);
+            mingy = MathUtil.Clamp(mingy, 0, EntityGrid.GetLength(1) - 1);
+            maxgx = MathUtil.Clamp(maxgx, 0, EntityGrid.GetLength(0) - 1);
+            maxgy = MathUtil.Clamp(maxgy, 0, EntityGrid.GetLength(1) - 1);
 
             for (int i = mingx; i <= maxgx; i++) {
                 for (int j = mingy; j <= maxgy; j++) {
                     HashSet<Entity> set = EntityGrid[i, j];
                     foreach (Entity e in new List<Entity>(set)) {
                         e.data.recentDmg -= GameTime.DeltaTime;
-                        MathUtil.ClampMin(ref e.data.recentDmg, 0);
+                        e.data.recentDmg = Math.Max(e.data.recentDmg, 0);
 
                         e.UpdateHitbox();
                         e.Update();
@@ -174,10 +175,70 @@ namespace Game.Entities {
                     }
                 }
             }
+            GameTime.EntityUpdatesTimer.Pause();
+        }
+
+        public static void UpdateLightEmittingBefore() {
+            if (Player.Instance == null) return;
+            GameTime.EntityUpdatesTimer.Start();
+            int minx, maxx, miny, maxy;
+            Terrain.Range(out minx, out maxx, out miny, out maxy);
+
+            int mingx = (int)Math.Floor((float)minx / GridX);
+            int mingy = (int)Math.Floor((float)miny / GridY);
+            int maxgx = (int)Math.Ceiling((float)maxx / GridX);
+            int maxgy = (int)Math.Ceiling((float)maxy / GridY);
+            mingx = MathUtil.Clamp(mingx, 0, EntityGrid.GetLength(0) - 1);
+            mingy = MathUtil.Clamp(mingy, 0, EntityGrid.GetLength(1) - 1);
+            maxgx = MathUtil.Clamp(maxgx, 0, EntityGrid.GetLength(0) - 1);
+            maxgy = MathUtil.Clamp(maxgy, 0, EntityGrid.GetLength(1) - 1);
+
+            for (int i = mingx; i <= maxgx; i++) {
+                for (int j = mingy; j <= maxgy; j++) {
+                    HashSet<Entity> set = EntityGrid[i, j];
+                    foreach (Entity e in new List<Entity>(set)) {
+                        ILight l = e as ILight;
+                        if (l != null) {
+                            LightingManager.AddLight((int)e.data.pos.x, (int)e.data.pos.y, l.Radius(), l.Strength(), l.Colour());
+                        }
+                    }
+                }
+            }
+            GameTime.EntityUpdatesTimer.Pause();
+        }
+
+        public static void UpdateLightEmittingAfter() {
+            if (Player.Instance == null) return;
+            GameTime.EntityUpdatesTimer.Start();
+            int minx, maxx, miny, maxy;
+            Terrain.Range(out minx, out maxx, out miny, out maxy);
+
+            int mingx = (int)Math.Floor((float)minx / GridX);
+            int mingy = (int)Math.Floor((float)miny / GridY);
+            int maxgx = (int)Math.Ceiling((float)maxx / GridX);
+            int maxgy = (int)Math.Ceiling((float)maxy / GridY);
+            mingx = MathUtil.Clamp(mingx, 0, EntityGrid.GetLength(0) - 1);
+            mingy = MathUtil.Clamp(mingy, 0, EntityGrid.GetLength(1) - 1);
+            maxgx = MathUtil.Clamp(maxgx, 0, EntityGrid.GetLength(0) - 1);
+            maxgy = MathUtil.Clamp(maxgy, 0, EntityGrid.GetLength(1) - 1);
+
+            for (int i = mingx; i <= maxgx; i++) {
+                for (int j = mingy; j <= maxgy; j++) {
+                    HashSet<Entity> set = EntityGrid[i, j];
+                    foreach (Entity e in new List<Entity>(set)) {
+                        ILight l = e as ILight;
+                        if (l != null) {
+                            LightingManager.RemoveLight((int)e.data.pos.x, (int)e.data.pos.y, l.Radius(), l.Strength(), l.Colour());
+                        }
+                    }
+                }
+            }
+            GameTime.EntityUpdatesTimer.Pause();
         }
 
         public static void Render() {
             if (Player.Instance == null) return;
+            GameTime.EntityRenderTimer.Start();
             Gl.UseProgram(shader.ProgramID);
 
             int minx, maxx, miny, maxy;
@@ -186,10 +247,10 @@ namespace Game.Entities {
             int mingy = (int)Math.Floor((float)miny / GridY);
             int maxgx = (int)Math.Ceiling((float)maxx / GridX);
             int maxgy = (int)Math.Ceiling((float)maxy / GridY);
-            MathUtil.Clamp(ref mingx, 0, EntityGrid.GetLength(0) - 1);
-            MathUtil.Clamp(ref mingy, 0, EntityGrid.GetLength(1) - 1);
-            MathUtil.Clamp(ref maxgx, 0, EntityGrid.GetLength(0) - 1);
-            MathUtil.Clamp(ref maxgy, 0, EntityGrid.GetLength(1) - 1);
+            mingx = MathUtil.Clamp(mingx, 0, EntityGrid.GetLength(0) - 1);
+            mingy = MathUtil.Clamp(mingy, 0, EntityGrid.GetLength(1) - 1);
+            maxgx = MathUtil.Clamp(maxgx, 0, EntityGrid.GetLength(0) - 1);
+            maxgy = MathUtil.Clamp(maxgy, 0, EntityGrid.GetLength(1) - 1);
 
             Dictionary<EntityID, HashSet<Entity>> EntitiesMap = new Dictionary<EntityID, HashSet<Entity>>();
             for (int i = mingx; i <= maxgx; i++) {
@@ -225,7 +286,7 @@ namespace Game.Entities {
                         float offsetval = 1 - e.data.recentDmg / EntityData.maxRecentDmgTime;
                         offsetval /= 2;
                         Vector4 colouroffset = TextureUtil.ToVec4(Color.DarkGoldenrod) * new Vector4(offsetval, offsetval, offsetval, 1);
-                        colouroffset *= e.data.colour;
+                        colouroffset += e.data.colour;
                         shader["clr"].SetValue(colouroffset);
                     } else {
                         shader["clr"].SetValue(e.data.colour);
@@ -238,7 +299,7 @@ namespace Game.Entities {
             }
 
             if (GameLogic.RenderHitboxes) {
-                var model = Assets.Models.GetModel(EntityID.HitboxOutline);
+                var model = Assets.Models.GetModel(EntityID.BlackOutline);
                 Gl.BindVertexArray(model.vao.ID);
                 foreach (EntityID entityId in EntitiesMap.Keys) {
                     foreach (Entity e in EntitiesMap[entityId]) {
@@ -254,6 +315,7 @@ namespace Game.Entities {
             Gl.Disable(EnableCap.Blend);
             Gl.BindVertexArray(0);
             Gl.UseProgram(0);
+            GameTime.EntityRenderTimer.Pause();
         }
 
         public static void ClearEntities() {

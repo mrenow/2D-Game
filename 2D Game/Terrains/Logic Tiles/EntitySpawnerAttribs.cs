@@ -1,12 +1,11 @@
 ﻿using Game.Entities;
 using Game.Items;
-using Game.Terrains;
 using Game.Util;
 using OpenGL;
 using System;
 using System.Text;
 
-namespace Game.Logics {
+namespace Game.Terrains.Logics {
 
     [Serializable]
     class EntitySpawnerAttribs : PowerDrainData {
@@ -85,14 +84,14 @@ namespace Game.Logics {
             var s = entityCage.CapturedEntity;
 
             if (s is Shooter) {
-                AddIfNotColliding(new Shooter(pos));
+                SpawnEntity(new Shooter(pos));
             } else if (s is Squisher) {
-                AddIfNotColliding(new Squisher(pos));
+                SpawnEntity(new Squisher(pos));
             }
         }
 
-        private void AddIfNotColliding(Entity e) {
-            if (e.IsCollidingWithTerrain()) return;
+        private void SpawnEntity(Entity e) {
+            if (e.Colliding()) return;
             EntityManager.AddEntity(e);
         }
     }

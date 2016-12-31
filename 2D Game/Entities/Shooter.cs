@@ -1,6 +1,5 @@
 ﻿using System;
 using OpenGL;
-using Game.Terrains;
 using Game.Core;
 using Game.Entities;
 using Game.Util;
@@ -39,7 +38,7 @@ namespace Game {
             vel /= 5;
             Projectile proj = new Projectile(data.pos.val, vel, projlife);
 
-            if (!Terrain.IsColliding(proj)) EntityManager.AddEntity(proj);
+            if (!proj.Colliding()) EntityManager.AddEntity(proj);
         }
     }
 }

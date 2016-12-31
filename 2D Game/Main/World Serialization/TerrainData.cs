@@ -1,18 +1,23 @@
-﻿using Game.Terrains.Gen;
+﻿using Game.Terrains.Terrain_Generation;
 using System;
 using Game.Terrains;
-using System.Collections.Generic;
-using Game.Util;
-using Game.Fluids;
-using Game.Logics;
+using OpenGL;
 
 namespace Game.Core.World_Serialization {
 
     [Serializable]
-    public class TerrainData {
-        internal Tile[,] terrain;
-        internal Biome[] terrainbiomes;
-        internal Dictionary<Vector2i, FluidAttribs> fluidDict;
-        internal Dictionary<Vector2i, LogicAttribs> logicDict;
+    internal class ChunkData {
+
+        internal int location;
+        internal Tile[,] tiles;
+        internal Biome[] biomes;
+        internal Vector3[,] lightings;
+
+        internal ChunkData(int location, Tile[,] tiles, Biome[] biomes, Vector3[,] lightings) {
+            this.location = location;
+            this.tiles = tiles;
+            this.biomes = biomes;
+            this.lightings = lightings;
+        }
     }
 }

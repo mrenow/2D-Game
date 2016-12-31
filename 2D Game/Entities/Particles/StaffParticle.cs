@@ -7,15 +7,19 @@ using Game.Entities;
 using Game.Terrains;
 using Game.Items;
 
-namespace Game.Particles {
+namespace Game.Entities.Particles {
 
     [Serializable]
     abstract class StaffParticle : Particle {
         public StaffParticle(EntityID model, Vector2 pos, Vector2 vel)
             : base(model, pos) {
             data.vel.val = vel;
-            data.calcTerrainCollisions = false;
-            ((ParticleData)data).rotfactor = 0.01f;
+            deltaRot = 0.01f;
+        }
+
+        public override void Update() {
+            base.Update();
+            data.colour.w = data.life.val / data.life.max;
         }
 
         public override void OnTerrainCollision(int x, int y, Direction d, Tile t) {
@@ -52,7 +56,7 @@ namespace Game.Particles {
             if (slot >= PlayerInventory.Instance.Items.GetLength(0)) slot = 0;
             var item = PlayerInventory.Instance.Items[slot, 0];
             var attribs = item.rawitem.attribs;
-            if (!(attribs is Item_Tile_Attribs)) return;
+            if (!(attribs is ItemAttribs_Tile)) return;
             Vector2 v = Input.RayCast();
             switch (d) {
                 case Direction.Up:
@@ -99,22 +103,25 @@ namespace Game.Particles {
             new SParc_Water(pos, vel);
         }
 
-        public override void Update() {
-            base.Update();
-            if (Terrain.IsColliding(hitbox) || ((ParticleData)data).life <= 0) {
-                int x = (int)data.pos.x;
-                int y = (int)data.pos.y;
+        private void PlaceWater() {
+            int x = (int)data.pos.x;
+            int y = (int)data.pos.y;
 
-                Terrain.SetTile(x - 1, y, Tile.Water());
-                Terrain.SetTile(x + 1, y, Tile.Water());
-                Terrain.SetTile(x, y + 1, Tile.Water());
-                Terrain.SetTile(x, y - 1, Tile.Water());
+            Terrain.SetTile(x - 1, y, Tile.Water());
+            Terrain.SetTile(x + 1, y, Tile.Water());
+            Terrain.SetTile(x, y + 1, Tile.Water());
+            Terrain.SetTile(x, y - 1, Tile.Water());
 
-                EntityManager.RemoveEntity(this);
-
-            }
+            EntityManager.RemoveEntity(this);
         }
 
+        public override void OnTerrainCollision(int x, int y, Direction d, Tile t) {
+            PlaceWater();
+        }
+
+        public override void OnDeath() {
+            PlaceWater();
+        }
     }
 
     [Serializable]

@@ -1,7 +1,7 @@
 ﻿using Game.Util;
 using System;
 
-namespace Game.Terrains.Gen {
+namespace Game.Terrains.Terrain_Generation {
     static class Ocean {
         internal static int Generate(int posX, int posY, int size) {
             float heightVar = 2;
@@ -11,7 +11,7 @@ namespace Game.Terrains.Gen {
                 float x = f * (f - 1);
                 x += 1 / 4;
                 x *= 4;
-                MathUtil.ClampMin(ref x, 0.25f);
+                x = Math.Max(x, 0.25f);
                 return (1 - x) * 64 + MathUtil.RandFloat(TerrainGen.rand, -heightVar, heightVar);
             });
 

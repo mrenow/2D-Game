@@ -45,10 +45,10 @@ namespace Game.Items {
 
         private TextStyle textStyle;
 
-        internal const float SizeX = 0.1f;
-        internal const float SizeY = 0.1f;
-        internal const float ItemTextureOffset = 0.01f;
-        internal const float ItemTextureSize = 16;
+        internal float SizeX = 0.1f;
+        internal float SizeY = 0.1f;
+        internal float ItemTextureOffset = 0.01f;
+        internal float ItemTextureSize = 16;
 
         #endregion
 
@@ -57,7 +57,7 @@ namespace Game.Items {
         private PlayerInventory(int x, int y) : base(x, y) {
             //inventory
             Pos = new Vector2(((2 - x * SizeX) / 2) - 1, -0.5);
-            HotbarPos = new Vector2(Pos.x, -1);
+            HotbarPos = new Vector2(Pos.x, -0.98);
             TextPosOffset = new Vector2(0.115, 0.03);
 
             textStyle = TextStyle.LucidaConsole_SingleLine_Small;
@@ -91,9 +91,9 @@ namespace Game.Items {
             Background = GuiModel.CreateRectangleTopLeft(new Vector2(x * SizeX, (y - 1) * SizeY), TextureUtil.CreateTexture(new Vector4(0.3, 0.3, 0.3, 0.8)));
             HotbarBackground = GuiModel.CreateRectangleTopLeft(new Vector2(x * SizeX, SizeY), TextureUtil.CreateTexture(new Vector4(0.3, 0.3, 0.3, 0.8)));
 
-            TextStyle style = new TextStyle(TextAlignment.TopLeft, TextFont.LucidaConsole, 0.8f, 1f, 1, 1f, new Vector3(1, 1, 1));
-            InvText = new Text("Inventory", style, new Vector2(0.015 + Pos.x, Pos.y + 2 * (y - 0.5) * SizeY));
-            InvTextBackground = GuiModel.CreateRectangleTopLeft(new Vector2(x * SizeX, SizeY), TextureUtil.CreateTexture(new Vector4(0.3, 0.3, 0.3, 0.8)));
+            TextStyle style = new TextStyle(TextAlignment.TopLeft, TextFont.LucidaConsole, 0.6f, 1f, 1, 1f, new Vector3(1, 1, 1));
+            InvText = new Text("Inventory", style, new Vector2(0.015 + Pos.x, Pos.y + 0.1 + 2 * y * (SizeY - 2 * ItemTextureOffset)));
+            InvTextBackground = GuiModel.CreateRectangleTopLeft(new Vector2(x * SizeX, SizeY / 2), TextureUtil.CreateTexture(new Vector4(0.3, 0.3, 0.3, 0.7)));
             InvTextLine = GuiModel.CreateLine(new Vector2(x * SizeX, 0), TextureUtil.CreateTexture(new Vector4(0.05, 0.05, 0.1, 0.9)));
             var itemnamestyle = TextStyle.LucidaConsole_SingleLine_Small;
             itemnamestyle.alignment = TextAlignment.Bottom;
@@ -132,6 +132,8 @@ namespace Game.Items {
             Items[3, row] = new Item(RawItem.Accelerator, RawItem.Accelerator.attribs.stackSize);
             Items[4, row] = new Item(RawItem.Water, RawItem.Water.attribs.stackSize);
             Items[5, row] = new Item(RawItem.Lava, RawItem.Lava.attribs.stackSize);
+            Items[6, row] = new Item(RawItem.BounceFluid, RawItem.BounceFluid.attribs.stackSize);
+            Items[7, row] = new Item(RawItem.Light, RawItem.Light.attribs.stackSize);
             //Items[5, row] = new Item(RawItem.WardedTile, RawItem.WardedTile.attribs.stackSize);
 
             row++;
@@ -153,6 +155,7 @@ namespace Game.Items {
             Items[5, row] = new Item(RawItem.StaffRed, RawItem.StaffRed.attribs.stackSize);
             Items[6, row] = new Item(RawItem.StaffPurple, RawItem.StaffPurple.attribs.stackSize);
             Items[7, row] = new Item(RawItem.StaffYellow, RawItem.StaffYellow.attribs.stackSize);
+            Items[8, row] = new Item(RawItem.Firework, RawItem.Firework.attribs.stackSize);
 
             row++;
             Items[0, row] = new Item(RawItem.Switch, RawItem.Switch.attribs.stackSize);
@@ -253,20 +256,26 @@ namespace Game.Items {
         }
 
         private void Update_ItemCountText() {
+            GameTime.GuiTimer.Start();
             for (int i = 0; i < ItemCountText.GetLength(0); i++) {
                 for (int j = 0; j < ItemCountText.GetLength(1); j++) {
                     var s = Items[i, j + 1].amt.ToString();
-                    ItemCountText[i, j].SetText(s == "0" ? "" : s);
+                    s = s == "0" ? "" : s;
+                    ItemCountText[i, j].SetText(s);
                 }
             }
             for (int i = 0; i < ItemCountText.GetLength(0); i++) {
                 var s = Items[i, 0].amt.ToString();
-                HotbarItemCountText[i].SetText(s == "0" ? "" : s);
+                s = s == "0" ? "" : s;
+                HotbarItemCountText[i].SetText(s);
             }
+            GameTime.GuiTimer.Pause();
         }
 
         private void Update_HotbarItemNameText() {
-            ItemNameText.SetText(CurrentlySelectedItem().rawitem.attribs.name);
+            var name = CurrentlySelectedItem().rawitem.attribs.name;
+            name = name == "None" ? "" : name;
+            ItemNameText.SetText(name);
             ItemNameText.SetPos(HotbarPos + new Vector2((CurSelectedSlot + 0.5) * SizeX + ItemTextureOffset, 2 * SizeY));
         }
 
@@ -364,10 +373,14 @@ namespace Game.Items {
         }
 
         public void UpdateHotbar() {
+            //   GameTime.GuiTimer.Start();
             HandleKeys();
             HotbarItemDisplay.vao.UpdateUVs(Generate_HotbarTexturedItemsUV());
+
             Update_HotbarItemNameText();
+
             Update_ItemCountText();
+            //  GameTime.GuiTimer.Pause();
         }
 
         public void UpdateInventory() {
